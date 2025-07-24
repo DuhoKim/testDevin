@@ -20,30 +20,59 @@ DATASETS = {
         'description': "DESI DR1 AGN/QSO catalog with AGN properties"
     },
     
+    'fastspecfit_bright_hp00': {
+        'url': f"{BASE_URL}/fastspecfit/iron/v3.0/catalogs/fastspec-iron-main-bright-nside1-hp00.fits",
+        'size_gb': 0.4,
+        'description': "FastSpecFit main bright galaxies HP00 - SFR and stellar properties"
+    },
+    
     'fastspecfit_bright_hp01': {
         'url': f"{BASE_URL}/fastspecfit/iron/v3.0/catalogs/fastspec-iron-main-bright-nside1-hp01.fits",
         'size_gb': 4.2,
         'description': "FastSpecFit main bright galaxies HP01 - SFR and stellar properties"
     },
     
-    'fastspecfit_dark_hp00': {
-        'url': f"{BASE_URL}/fastspecfit/iron/v3.0/catalogs/fastspec-iron-main-dark-nside1-hp00.fits", 
-        'size_gb': 1.4,
-        'description': "FastSpecFit main dark galaxies HP00 - SFR and stellar properties"
+    'fastspecfit_bright_hp02': {
+        'url': f"{BASE_URL}/fastspecfit/iron/v3.0/catalogs/fastspec-iron-main-bright-nside1-hp02.fits",
+        'size_gb': 5.6,
+        'description': "FastSpecFit main bright galaxies HP02 - SFR and stellar properties"
     },
     
-    'stellar_mass_emline': {
-        'url': f"{BASE_URL}/stellar-mass-emline/v1.0/dr1_galaxy_stellarmass_lineinfo_v1.0.fits",
-        'size_gb': 52.3,
-        'description': "Stellar masses and emission line measurements"
+    'fastspecfit_bright_hp03': {
+        'url': f"{BASE_URL}/fastspecfit/iron/v3.0/catalogs/fastspec-iron-main-bright-nside1-hp03.fits",
+        'size_gb': 1.7,
+        'description': "FastSpecFit main bright galaxies HP03 - SFR and stellar properties"
+    },
+    
+    'fastspecfit_bright_hp04': {
+        'url': f"{BASE_URL}/fastspecfit/iron/v3.0/catalogs/fastspec-iron-main-bright-nside1-hp04.fits",
+        'size_gb': 4.0,
+        'description': "FastSpecFit main bright galaxies HP04 - SFR and stellar properties"
+    },
+    
+    'lss_bgs_bright': {
+        'url': f"{BASE_URL}/lss/iron/v1.1/LSScats/full/BGS_BRIGHT_full.dat.fits",
+        'size_gb': 0.5,
+        'description': "BGS bright galaxy LSS catalog"
+    },
+    
+    'lss_elg': {
+        'url': f"{BASE_URL}/lss/iron/v1.1/LSScats/full/ELG_LOPnotqso_full.dat.fits",
+        'size_gb': 0.3,
+        'description': "ELG LSS catalog"
+    },
+    
+    'lss_lrg': {
+        'url': f"{BASE_URL}/lss/iron/v1.1/LSScats/full/LRG_full.dat.fits",
+        'size_gb': 0.2,
+        'description': "LRG LSS catalog"
+    },
+    
+    'lss_qso': {
+        'url': f"{BASE_URL}/lss/iron/v1.1/LSScats/full/QSO_full.dat.fits",
+        'size_gb': 0.2,
+        'description': "QSO LSS catalog"
     }
-}
-
-LSS_CATALOGS = {
-    'BGS_BRIGHT': f"{BASE_URL}/lss/guadalupe/v1.0/LSScats/full/BGS_BRIGHT_full.dat.fits",
-    'ELG': f"{BASE_URL}/lss/guadalupe/v1.0/LSScats/full/ELG_LOPnotqso_full.dat.fits", 
-    'LRG': f"{BASE_URL}/lss/guadalupe/v1.0/LSScats/full/LRG_full.dat.fits",
-    'QSO': f"{BASE_URL}/lss/guadalupe/v1.0/LSScats/full/QSO_full.dat.fits"
 }
 
 def download_file(url, filename, expected_size_gb=None):
@@ -103,48 +132,77 @@ def verify_desi_data(filename):
         return False
 
 def download_sample_data():
-    """Download smaller sample datasets for initial analysis"""
-    print("=== Downloading DESI DR1 VAC Sample Data ===")
+    """Download a smaller sample of DESI DR1 VAC data for initial analysis"""
+    print("=== Downloading Sample DESI DR1 VAC Data ===")
+    print("Real observational data only - no mocks or simulations")
     
     os.makedirs("data", exist_ok=True)
     os.chdir("data")
     
-    print("\n1. Downloading LSS catalogs...")
-    for name, url in LSS_CATALOGS.items():
-        filename = f"lss_{name.lower()}.fits"
-        if download_file(url, filename):
-            verify_desi_data(filename)
+    sample_datasets = ['fastspecfit_bright_hp01', 'lss_bgs_bright', 'lss_elg', 'lss_lrg', 'lss_qso']
     
-    print("\n2. Downloading FastSpecFit bright galaxies catalog (HP01)...")
-    filename = "fastspecfit_bright_hp01.fits"
-    if download_file(DATASETS['fastspecfit_bright_hp01']['url'], filename, 
-                    DATASETS['fastspecfit_bright_hp01']['size_gb']):
-        verify_desi_data(filename)
+    for dataset_key in sample_datasets:
+        if dataset_key in DATASETS:
+            filename = f"{dataset_key.replace('_', '_')}.fits"
+            print(f"\nDownloading {DATASETS[dataset_key]['description']}")
+            if download_file(DATASETS[dataset_key]['url'], filename, 
+                            DATASETS[dataset_key]['size_gb']):
+                verify_desi_data(filename)
     
-    print("\n=== Sample data download complete ===")
-    print("Use download_full_data() to download complete datasets")
+    print("\n=== Sample download complete ===")
+    print("Ready for LSS-AGN-SF feedback analysis")
+
+def download_expanded_sample():
+    """Download multiple HEALPix regions for increased sample size"""
+    print("=== Downloading Expanded DESI DR1 FastSpecFit Sample ===")
+    print("Real observational data only - no mocks or simulations")
+    
+    os.makedirs("data", exist_ok=True)
+    os.chdir("data")
+    
+    hp_regions = ['hp00', 'hp01', 'hp02', 'hp03', 'hp04']
+    
+    for hp in hp_regions:
+        dataset_key = f'fastspecfit_bright_{hp}'
+        if dataset_key in DATASETS:
+            filename = f"fastspecfit_bright_{hp}.fits"
+            print(f"\nDownloading {DATASETS[dataset_key]['description']}")
+            if download_file(DATASETS[dataset_key]['url'], filename, 
+                            DATASETS[dataset_key]['size_gb']):
+                verify_desi_data(filename)
+    
+    lss_datasets = ['lss_bgs_bright', 'lss_elg', 'lss_lrg', 'lss_qso']
+    for dataset_key in lss_datasets:
+        if dataset_key in DATASETS:
+            filename = f"{dataset_key.replace('_', '_')}.fits"
+            print(f"\nDownloading {DATASETS[dataset_key]['description']}")
+            if download_file(DATASETS[dataset_key]['url'], filename, 
+                            DATASETS[dataset_key]['size_gb']):
+                verify_desi_data(filename)
+    
+    print("\n=== Expanded sample download complete ===")
+    print("Expected sample increase: ~5-10x current size")
 
 def download_full_data():
-    """Download complete datasets (warning: very large files)"""
-    print("=== Downloading Complete DESI DR1 VAC Data ===")
-    print("WARNING: This will download ~70 GB of data")
-    
-    response = input("Continue? (y/N): ")
-    if response.lower() != 'y':
-        print("Download cancelled")
-        return
+    """Download the complete DESI DR1 VAC dataset"""
+    print("=== Downloading Full DESI DR1 VAC Data ===")
+    print("Real observational data only - no mocks or simulations")
+    print("Warning: This will download ~25 GB of data")
     
     os.makedirs("data", exist_ok=True)
     os.chdir("data")
     
-    for name, info in DATASETS.items():
-        filename = f"{name}.fits"
-        print(f"\nDownloading {info['description']}")
-        if download_file(info['url'], filename, info['size_gb']):
+    for dataset_key, dataset_info in DATASETS.items():
+        filename = f"{dataset_key.replace('_', '_')}.fits"
+        print(f"\nDownloading {dataset_info['description']}")
+        if download_file(dataset_info['url'], filename, dataset_info['size_gb']):
             verify_desi_data(filename)
+    
+    print("\n=== Full download complete ===")
+    print("Complete DESI DR1 VAC dataset ready for analysis")
 
 if __name__ == "__main__":
     print("DESI DR1 VAC Data Downloader")
     print("Real observational data only - no mocks or simulations")
     
-    download_sample_data()
+    download_expanded_sample()
