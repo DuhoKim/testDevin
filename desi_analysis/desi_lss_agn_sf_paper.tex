@@ -112,7 +112,7 @@ This distribution reflects our percentile-based classification scheme and provid
 
 \subsection{Stellar-Mass Binned Environmental Effects}
 
-Figures~\ref{fig:sfr_env} and \ref{fig:mass_binned} show the relationship between star formation activity and large-scale environment across different stellar mass ranges. We observe clear mass-dependent environmental trends in both absolute and specific star formation rates.
+Figures~\ref{fig:sfr_env}, \ref{fig:combined_trends}, and \ref{fig:trends_summary} show the relationship between star formation activity and large-scale environment across different stellar mass ranges. The combined visualizations (Figures~\ref{fig:combined_trends} and \ref{fig:trends_summary}) provide integrated views that clearly demonstrate mass-dependent environmental trends in both absolute and specific star formation rates.
 
 \subsubsection{Low-Mass Galaxies (log M$_*$ < 10.0 M$_\odot$)}
 
@@ -141,11 +141,11 @@ High-mass galaxies show complex environmental dependence:
 \item Cluster: $\langle \log \text{SFR} \rangle = -1.49$ M$_\odot$/yr, $\langle \log \text{sSFR} \rangle = -12.64$ yr$^{-1}$
 \end{itemize}
 
-The environmental trends are most pronounced in the intermediate-mass bin, suggesting that environmental quenching mechanisms are most effective for galaxies in this mass range.
+The environmental trends are most pronounced in the intermediate-mass bin, suggesting that environmental quenching mechanisms are most effective for galaxies in this mass range. Figure~\ref{fig:trends_summary} quantifies these effects, showing environmental quenching strength that peaks at high stellar masses ($\Delta = 6.58$ dex difference between void and cluster environments) while remaining significant across all mass bins.
 
 \subsection{Multiple LSS Indicator Analysis}
 
-The void probability function and tidal field proxy provide complementary information to the local density metric. Galaxies with high void probability (P$_{\text{void}}$ > 0.1) consistently show enhanced star formation across all mass bins, while galaxies in high tidal field environments show suppressed star formation, particularly in the intermediate-mass range.
+The void probability function and tidal field proxy provide complementary information to the local density metric. Figure~\ref{fig:combined_trends} demonstrates that galaxies with high void probability (P$_{\text{void}}$ > 0.1) consistently show enhanced star formation across all mass bins, while galaxies in high tidal field environments show suppressed star formation, particularly in the intermediate-mass range. The integrated visualization reveals that all three LSS indicators show consistent environmental trends, strengthening our conclusions about environmental quenching mechanisms.
 
 \begin{figure*}
 \includegraphics[width=\textwidth]{sfr_vs_environment.png}
@@ -171,6 +171,18 @@ The void probability function and tidal field proxy provide complementary inform
 \label{fig:high_mass}
 \end{figure*}
 
+\begin{figure*}
+\includegraphics[width=\textwidth]{combined_environmental_trends.png}
+\caption{Comprehensive overview of environmental trends across stellar mass bins. \textbf{Top row}: SFR and sSFR box plots by environment and mass bin (left, center), environmental quenching strength showing mass-dependent effects (right). \textbf{Bottom row}: Tidal field effects (left), void probability trends (center), and sample sizes for statistical reliability (right). This integrated view clearly shows that environmental effects are strongest in intermediate-mass galaxies, with quantitative measures of quenching strength across mass bins.}
+\label{fig:combined_trends}
+\end{figure*}
+
+\begin{figure*}
+\includegraphics[width=\textwidth]{environmental_trends_summary.png}
+\caption{Key environmental trends summary across stellar mass bins. \textbf{Left}: Environmental quenching strength versus stellar mass, showing peak quenching in high-mass galaxies ($\Delta = 6.58$ dex) with error bars from bootstrap analysis. \textbf{Center}: Median SFR trends across environments for each mass bin, demonstrating systematic environmental effects. \textbf{Right}: Star-forming fraction versus environment, showing the impact of environment on galaxy activity levels. These focused comparisons highlight the mass-dependent nature of environmental quenching mechanisms.}
+\label{fig:trends_summary}
+\end{figure*}
+
 \section{Discussion}
 
 \subsection{Mass-Dependent Environmental Quenching}
@@ -178,13 +190,13 @@ The void probability function and tidal field proxy provide complementary inform
 Our stellar-mass binned analysis reveals that environmental effects on star formation are strongly mass-dependent, providing new insights into the physical mechanisms responsible for environmental quenching:
 
 \subsubsection{Intermediate-Mass Galaxies: Peak Environmental Sensitivity}
-The strongest environmental trends occur in intermediate-mass galaxies (10.0-11.0 log M$_\odot$), where we observe systematic decreases in both SFR and sSFR from void to cluster environments. This mass range corresponds to the transition between star-forming and quenched populations, suggesting that environmental processes are most effective when galaxies are already approaching the end of their star formation phase.
+The strongest environmental trends occur in intermediate-mass galaxies (10.0-11.0 log M$_\odot$), where we observe systematic decreases in both SFR and sSFR from void to cluster environments. Figure~\ref{fig:trends_summary} clearly shows this mass range exhibits the most consistent environmental quenching across all three environmental indicators. This mass range corresponds to the transition between star-forming and quenched populations, suggesting that environmental processes are most effective when galaxies are already approaching the end of their star formation phase.
 
 \subsubsection{Low-Mass Galaxies: Environmental Resilience}
 Low-mass galaxies show weaker environmental trends, consistent with their deeper potential wells providing some protection against environmental processes like ram-pressure stripping. However, the observed trends suggest that even low-mass galaxies are not immune to environmental effects.
 
 \subsubsection{High-Mass Galaxies: Complex Environmental Response}
-High-mass galaxies exhibit complex environmental dependence, with enhanced star formation in intermediate-density environments compared to both voids and clusters. This may reflect the interplay between internal quenching mechanisms (AGN feedback) and environmental processes.
+High-mass galaxies exhibit complex environmental dependence, with enhanced star formation in intermediate-density environments compared to both voids and clusters. Figure~\ref{fig:trends_summary} quantifies this complexity, showing the largest environmental quenching strength ($\Delta = 6.58$ dex) but with significant scatter reflecting the interplay between internal quenching mechanisms (AGN feedback) and environmental processes. The combined visualizations in Figure~\ref{fig:combined_trends} reveal that this complexity is consistent across multiple LSS indicators.
 
 \subsection{Multiple LSS Indicators: Complementary Environmental Information}
 
