@@ -511,6 +511,338 @@ class DESIAnalyzer:
         print("AGN environment analysis complete")
         print("Generated: agn_vs_environment.png")
 
+    def create_combined_trend_plots(self, merged_clean):
+        """Create combined plots that clearly show environmental trends across mass bins"""
+        print("Creating combined trend visualization plots...")
+        
+        mass_bins = {
+            'Low Mass\n(log M* < 10.0)': (0, 10.0),
+            'Intermediate Mass\n(10.0 ≤ log M* < 11.0)': (10.0, 11.0),
+            'High Mass\n(log M* ≥ 11.0)': (11.0, 15.0)
+        }
+        
+        bin_data = {}
+        for bin_name, (min_mass, max_mass) in mass_bins.items():
+            if 'High Mass' in bin_name:
+                mask = merged_clean['LOGMSTAR'] >= min_mass
+            else:
+                mask = ((merged_clean['LOGMSTAR'] >= min_mass) & 
+                       (merged_clean['LOGMSTAR'] < max_mass))
+            bin_data[bin_name] = merged_clean[mask].copy()
+        
+        fig, axes = plt.subplots(2, 3, figsize=(20, 12))
+        
+        ax1 = axes[0, 0]
+        environments = ['VOID', 'INTERMEDIATE', 'CLUSTER']
+        colors = ['lightblue', 'lightgreen', 'lightcoral']
+        
+        x_positions = []
+        box_data = []
+        labels = []
+        
+        for i, env in enumerate(environments):
+            for j, (bin_name, data) in enumerate(bin_data.items()):
+                env_data = data[data['ENVIRONMENT'] == env]
+                if len(env_data) > 10:
+                    x_pos = i * 4 + j
+                    x_positions.append(x_pos)
+                    box_data.append(np.log10(env_data['SFR']))
+                    labels.append(f"{env}\n{bin_name.split()[0]}")
+        
+        bp = ax1.boxplot(box_data, positions=x_positions, patch_artist=True, widths=0.6)
+        
+        mass_colors = ['#1f77b4', '#ff7f0e', '#2ca02c']
+        for i, patch in enumerate(bp['boxes']):
+            patch.set_facecolor(mass_colors[i % 3])
+            patch.set_alpha(0.7)
+        
+        ax1.set_xticks([1, 5, 9])
+        ax1.set_xticklabels(environments)
+        ax1.set_ylabel('log SFR [M☉/yr]')
+        ax1.set_title('Star Formation Rate vs Environment by Mass Bin')
+        ax1.grid(True, alpha=0.3)
+        
+        from matplotlib.patches import Patch
+        legend_elements = [Patch(facecolor=mass_colors[i], alpha=0.7, 
+                                label=list(mass_bins.keys())[i].replace('\n', ' ')) 
+                          for i in range(3)]
+        ax1.legend(handles=legend_elements, loc='upper right')
+        
+        ax2 = axes[0, 1]
+        box_data_ssfr = []
+        
+        for i, env in enumerate(environments):
+            for j, (bin_name, data) in enumerate(bin_data.items()):
+                env_data = data[data['ENVIRONMENT'] == env]
+                if len(env_data) > 10:
+                    ssfr = env_data['SFR'] / (10**env_data['LOGMSTAR'])
+                    log_ssfr = np.log10(ssfr + 1e-12)
+                    box_data_ssfr.append(log_ssfr)
+        
+        bp2 = ax2.boxplot(box_data_ssfr, positions=x_positions, patch_artist=True, widths=0.6)
+        
+        for i, patch in enumerate(bp2['boxes']):
+            patch.set_facecolor(mass_colors[i % 3])
+            patch.set_alpha(0.7)
+        
+        ax2.set_xticks([1, 5, 9])
+        ax2.set_xticklabels(environments)
+        ax2.set_ylabel('log sSFR [yr⁻¹]')
+        ax2.set_title('Specific SFR vs Environment by Mass Bin')
+        ax2.grid(True, alpha=0.3)
+        
+        ax3 = axes[0, 2]
+        mass_bin_names = ['Low', 'Intermediate', 'High']
+        void_medians = []
+        cluster_medians = []
+        
+        for bin_name, data in bin_data.items():
+            void_data = data[data['ENVIRONMENT'] == 'VOID']
+            cluster_data = data[data['ENVIRONMENT'] == 'CLUSTER']
+            
+            if len(void_data) > 10 and len(cluster_data) > 10:
+                void_median = np.median(np.log10(void_data['SFR']))
+                cluster_median = np.median(np.log10(cluster_data['SFR']))
+                void_medians.append(void_median)
+                cluster_medians.append(cluster_median)
+            else:
+                void_medians.append(np.nan)
+                cluster_medians.append(np.nan)
+        
+        x_mass = np.arange(len(mass_bin_names))
+        width = 0.35
+        
+        bars1 = ax3.bar(x_mass - width/2, void_medians, width, label='Void', 
+                       color='lightblue', alpha=0.8)
+        bars2 = ax3.bar(x_mass + width/2, cluster_medians, width, label='Cluster', 
+                       color='lightcoral', alpha=0.8)
+        
+        ax3.set_xlabel('Stellar Mass Bin')
+        ax3.set_ylabel('Median log SFR [M☉/yr]')
+        ax3.set_title('Environmental Quenching by Mass Bin')
+        ax3.set_xticks(x_mass)
+        ax3.set_xticklabels(mass_bin_names)
+        ax3.legend()
+        ax3.grid(True, alpha=0.3)
+        
+        for i, (void_val, cluster_val) in enumerate(zip(void_medians, cluster_medians)):
+            if not np.isnan(void_val) and not np.isnan(cluster_val):
+                quench_strength = void_val - cluster_val
+                ax3.text(i, max(void_val, cluster_val) + 0.1, 
+                        f'Δ={quench_strength:.2f}', ha='center', fontweight='bold')
+        
+        ax4 = axes[1, 0]
+        tidal_envs = ['LOW_TIDAL', 'INTERMEDIATE_TIDAL', 'HIGH_TIDAL']
+        tidal_colors = ['purple', 'orange', 'red']
+        
+        for i, (bin_name, data) in enumerate(bin_data.items()):
+            tidal_medians = []
+            for tidal_env in tidal_envs:
+                tidal_data = data[data['TIDAL_ENVIRONMENT'] == tidal_env]
+                if len(tidal_data) > 10:
+                    median_sfr = np.median(np.log10(tidal_data['SFR']))
+                    tidal_medians.append(median_sfr)
+                else:
+                    tidal_medians.append(np.nan)
+            
+            ax4.plot(range(len(tidal_envs)), tidal_medians, 'o-', 
+                    label=bin_name.split('\n')[0], linewidth=2, markersize=8)
+        
+        ax4.set_xlabel('Tidal Environment')
+        ax4.set_ylabel('Median log SFR [M☉/yr]')
+        ax4.set_title('SFR vs Tidal Field by Mass Bin')
+        ax4.set_xticks(range(len(tidal_envs)))
+        ax4.set_xticklabels(['Low Tidal', 'Intermediate', 'High Tidal'])
+        ax4.legend()
+        ax4.grid(True, alpha=0.3)
+        
+        ax5 = axes[1, 1]
+        
+        for i, (bin_name, data) in enumerate(bin_data.items()):
+            void_prob_quartiles = np.percentile(data['VOID_PROB_R10'], [25, 50, 75])
+            
+            quartile_medians = []
+            quartile_labels = ['Q1 (Dense)', 'Q2', 'Q3', 'Q4 (Void-like)']
+            
+            for j in range(4):
+                if j == 0:
+                    mask = data['VOID_PROB_R10'] <= void_prob_quartiles[0]
+                elif j == 1:
+                    mask = ((data['VOID_PROB_R10'] > void_prob_quartiles[0]) & 
+                           (data['VOID_PROB_R10'] <= void_prob_quartiles[1]))
+                elif j == 2:
+                    mask = ((data['VOID_PROB_R10'] > void_prob_quartiles[1]) & 
+                           (data['VOID_PROB_R10'] <= void_prob_quartiles[2]))
+                else:
+                    mask = data['VOID_PROB_R10'] > void_prob_quartiles[2]
+                
+                quartile_data = data[mask]
+                if len(quartile_data) > 10:
+                    median_sfr = np.median(np.log10(quartile_data['SFR']))
+                    quartile_medians.append(median_sfr)
+                else:
+                    quartile_medians.append(np.nan)
+            
+            ax5.plot(range(4), quartile_medians, 'o-', 
+                    label=bin_name.split('\n')[0], linewidth=2, markersize=8)
+        
+        ax5.set_xlabel('Void Probability Quartile')
+        ax5.set_ylabel('Median log SFR [M☉/yr]')
+        ax5.set_title('SFR vs Void Probability by Mass Bin')
+        ax5.set_xticks(range(4))
+        ax5.set_xticklabels(quartile_labels, rotation=45)
+        ax5.legend()
+        ax5.grid(True, alpha=0.3)
+        
+        ax6 = axes[1, 2]
+        
+        sample_sizes = []
+        env_labels = []
+        
+        for env in environments:
+            for bin_name in mass_bins.keys():
+                data = bin_data[bin_name]
+                env_data = data[data['ENVIRONMENT'] == env]
+                sample_sizes.append(len(env_data))
+                env_labels.append(f"{env}\n{bin_name.split()[0]}")
+        
+        bars = ax6.bar(range(len(sample_sizes)), sample_sizes, 
+                      color=[colors[i//3] for i in range(len(sample_sizes))],
+                      alpha=0.7)
+        
+        ax6.set_xlabel('Environment - Mass Bin')
+        ax6.set_ylabel('Number of Galaxies')
+        ax6.set_title('Sample Sizes by Environment and Mass')
+        ax6.set_xticks(range(len(env_labels)))
+        ax6.set_xticklabels([label.replace('\n', ' ') for label in env_labels], 
+                           rotation=45, ha='right')
+        ax6.grid(True, alpha=0.3)
+        
+        for i, (bar, size) in enumerate(zip(bars, sample_sizes)):
+            if size > 0:
+                ax6.text(bar.get_x() + bar.get_width()/2, bar.get_height() + max(sample_sizes)*0.01,
+                        f'{size:,}', ha='center', va='bottom', fontsize=8)
+        
+        plt.tight_layout()
+        plt.savefig('combined_environmental_trends.png', dpi=300, bbox_inches='tight')
+        plt.show()
+        
+        print("Generated: combined_environmental_trends.png")
+        
+        self.create_trend_summary_plot(bin_data, mass_bins)
+    
+    def create_trend_summary_plot(self, bin_data, mass_bins):
+        """Create a focused summary plot of key environmental trends"""
+        fig, axes = plt.subplots(1, 3, figsize=(18, 6))
+        
+        ax1 = axes[0]
+        mass_centers = [9.5, 10.5, 11.5]  # Representative mass for each bin
+        quenching_strengths = []
+        quenching_errors = []
+        
+        for bin_name, data in bin_data.items():
+            void_data = data[data['ENVIRONMENT'] == 'VOID']
+            cluster_data = data[data['ENVIRONMENT'] == 'CLUSTER']
+            
+            if len(void_data) > 10 and len(cluster_data) > 10:
+                void_sfr = np.log10(void_data['SFR'])
+                cluster_sfr = np.log10(cluster_data['SFR'])
+                
+                quench_strength = np.median(void_sfr) - np.median(cluster_sfr)
+                n_bootstrap = 100
+                bootstrap_quench = []
+                for _ in range(n_bootstrap):
+                    void_boot = np.random.choice(void_sfr, size=len(void_sfr), replace=True)
+                    cluster_boot = np.random.choice(cluster_sfr, size=len(cluster_sfr), replace=True)
+                    bootstrap_quench.append(np.median(void_boot) - np.median(cluster_boot))
+                
+                quenching_strengths.append(quench_strength)
+                quenching_errors.append(np.std(bootstrap_quench))
+            else:
+                quenching_strengths.append(np.nan)
+                quenching_errors.append(np.nan)
+        
+        ax1.errorbar(mass_centers, quenching_strengths, yerr=quenching_errors,
+                    fmt='o-', linewidth=3, markersize=10, capsize=5, capthick=2)
+        ax1.set_xlabel('log Stellar Mass [M☉]')
+        ax1.set_ylabel('Environmental Quenching Strength\n(log SFR_void - log SFR_cluster)')
+        ax1.set_title('Quenching Strength vs Stellar Mass')
+        ax1.grid(True, alpha=0.3)
+        ax1.axhline(y=0, color='red', linestyle='--', alpha=0.5)
+        
+        for i, (mass, strength) in enumerate(zip(mass_centers, quenching_strengths)):
+            if not np.isnan(strength):
+                ax1.annotate(f'{strength:.2f}', (mass, strength), 
+                           textcoords="offset points", xytext=(0,10), ha='center',
+                           fontweight='bold', fontsize=12)
+        
+        ax2 = axes[1]
+        environments = ['VOID', 'INTERMEDIATE', 'CLUSTER']
+        x_env = np.arange(len(environments))
+        width = 0.25
+        
+        mass_bin_names = ['Low Mass', 'Intermediate Mass', 'High Mass']
+        colors = ['#1f77b4', '#ff7f0e', '#2ca02c']
+        
+        for i, (bin_name, data) in enumerate(bin_data.items()):
+            medians = []
+            errors = []
+            
+            for env in environments:
+                env_data = data[data['ENVIRONMENT'] == env]
+                if len(env_data) > 10:
+                    sfr_values = np.log10(env_data['SFR'])
+                    medians.append(np.median(sfr_values))
+                    errors.append(np.std(sfr_values) / np.sqrt(len(sfr_values)))
+                else:
+                    medians.append(np.nan)
+                    errors.append(np.nan)
+            
+            ax2.errorbar(x_env + i*width, medians, yerr=errors,
+                        fmt='o-', label=mass_bin_names[i], color=colors[i],
+                        linewidth=2, markersize=8, capsize=3)
+        
+        ax2.set_xlabel('Environment')
+        ax2.set_ylabel('Median log SFR [M☉/yr]')
+        ax2.set_title('SFR vs Environment by Mass Bin')
+        ax2.set_xticks(x_env + width)
+        ax2.set_xticklabels(environments)
+        ax2.legend()
+        ax2.grid(True, alpha=0.3)
+        
+        ax3 = axes[2]
+        
+        for i, (bin_name, data) in enumerate(bin_data.items()):
+            sf_fractions = []
+            
+            for env in environments:
+                env_data = data[data['ENVIRONMENT'] == env]
+                if len(env_data) > 10:
+                    ssfr = env_data['SFR'] / (10**env_data['LOGMSTAR'])
+                    log_ssfr = np.log10(ssfr + 1e-12)
+                    sf_fraction = np.sum(log_ssfr > -11) / len(log_ssfr)
+                    sf_fractions.append(sf_fraction)
+                else:
+                    sf_fractions.append(np.nan)
+            
+            ax3.plot(x_env, sf_fractions, 'o-', label=mass_bin_names[i], 
+                    color=colors[i], linewidth=2, markersize=8)
+        
+        ax3.set_xlabel('Environment')
+        ax3.set_ylabel('Star-Forming Fraction\n(log sSFR > -11)')
+        ax3.set_title('Star-Forming Fraction vs Environment')
+        ax3.set_xticks(x_env)
+        ax3.set_xticklabels(environments)
+        ax3.legend()
+        ax3.grid(True, alpha=0.3)
+        ax3.set_ylim(0, 1)
+        
+        plt.tight_layout()
+        plt.savefig('environmental_trends_summary.png', dpi=300, bbox_inches='tight')
+        plt.show()
+        
+        print("Generated: environmental_trends_summary.png")
+
 def main():
     """Main analysis pipeline with stellar-mass binned analysis"""
     print("=== DESI DR1 LSS-AGN-SF Feedback Analysis ===")
@@ -525,12 +857,17 @@ def main():
     
     mass_binned_results = analyzer.analyze_stellar_mass_binned_environment()
     
+    if mass_binned_results is not None:
+        analyzer.create_combined_trend_plots(mass_binned_results)
+    
     agn_results = analyzer.analyze_agn_vs_environment()
     
     print("\n=== Analysis Complete ===")
     print("Generated plots:")
     print("- sfr_vs_environment.png")
     print("- stellar_mass_binned_environment_*.png (for each mass bin)")
+    print("- combined_environmental_trends.png (NEW: comprehensive overview)")
+    print("- environmental_trends_summary.png (NEW: key trends summary)")
     print("- agn_vs_environment.png")
 
 if __name__ == "__main__":
