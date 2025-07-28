@@ -16,7 +16,7 @@
 \affiliation{Dark Energy Spectroscopic Instrument}
 
 \begin{abstract}
-We present an analysis of environmental effects on star formation rates (SFR) and active galactic nucleus (AGN) activity using real observational data from the Dark Energy Spectroscopic Instrument Data Release 1 (DESI DR1) Value Added Catalogs. Using an expanded sample of 434,935 galaxies with both large scale structure (LSS) classifications and spectroscopic stellar population synthesis measurements across five HEALPix regions, we investigate the relationship between multiple environmental indicators and star formation activity in stellar-mass binned samples. We implement three complementary LSS indicators: local density, void probability function, and tidal field proxy to characterize galaxy environments. Our stellar-mass binned analysis reveals mass-dependent environmental effects, with environmental quenching being most pronounced in intermediate-mass galaxies (10.0-11.0 log M$_\odot$). We find systematic decreases in star formation activity from void to cluster environments across all mass bins, with the strongest environmental trends observed in specific star formation rates. These results provide new observational constraints on environmental feedback mechanisms using unprecedented statistical power from DESI DR1.
+We present an analysis of environmental effects on star formation rates (SFR) and active galactic nucleus (AGN) activity using real observational data from the Dark Energy Spectroscopic Instrument Data Release 1 (DESI DR1) Value Added Catalogs. Using an expanded sample of 434,935 galaxies with both large scale structure (LSS) classifications and spectroscopic stellar population synthesis measurements across five HEALPix regions, we investigate the relationship between multiple environmental indicators and star formation activity in stellar-mass binned samples. We implement five complementary LSS indicators: local density, void probability function, tidal field proxy, halo mass, and richness to characterize galaxy environments. Our stellar-mass binned analysis reveals mass-dependent environmental effects, with environmental quenching being most pronounced in intermediate-mass galaxies (10.0-11.0 log M$_\odot$). We find systematic decreases in star formation activity from void to cluster environments across all mass bins, with the strongest environmental trends observed in specific star formation rates. These results provide new observational constraints on environmental feedback mechanisms using unprecedented statistical power from DESI DR1.
 \end{abstract}
 
 \keywords{galaxies: evolution --- galaxies: star formation --- large-scale structure of universe --- surveys}
@@ -80,6 +80,23 @@ We estimate the tidal field strength using the ratio of local densities at diffe
 T = \log_{10}\left(\frac{\rho_5}{\rho_{20}}\right)
 \end{equation}
 where $\rho_5$ and $\rho_{20}$ are densities calculated using the 5th and 20th nearest neighbors, respectively. This proxy captures the density gradient that drives tidal interactions.
+
+\subsubsection{Halo Mass and Richness Indicators}
+
+We incorporate halo mass and richness information from the DESI Gfinder Extended Halo-based Group Catalog \citep{Yang2021}. The catalog provides:
+\begin{equation}
+M_{\text{halo}} = \log_{10}\left(\frac{M_h}{M_\odot}\right)
+\end{equation}
+where $M_{\text{halo}}$ is the logarithmic halo mass, and richness $R$ representing the number of member galaxies in each group.
+
+Galaxies are classified into halo mass and richness environments based on percentiles:
+\begin{itemize}
+\item \textbf{Low Halo/Richness}: $< P_{25}$ (25th percentile)
+\item \textbf{Intermediate Halo/Richness}: $P_{25} \leq X \leq P_{75}$
+\item \textbf{High Halo/Richness}: $> P_{75}$ (75th percentile)
+\end{itemize}
+
+The Gfinder catalog is matched to our FastSpecFit sample using coordinate matching with a 1 arcsecond tolerance, providing halo mass and richness measurements for a subset of our galaxy sample.
 
 Galaxies are classified into three environmental categories based on local density percentiles:
 \begin{itemize}
@@ -145,7 +162,7 @@ The environmental trends are most pronounced in the intermediate-mass bin, sugge
 
 \subsection{Multiple LSS Indicator Analysis}
 
-The void probability function and tidal field proxy provide complementary information to the local density metric. Figure~\ref{fig:combined_trends} demonstrates that galaxies with high void probability (P$_{\text{void}}$ > 0.1) consistently show enhanced star formation across all mass bins, while galaxies in high tidal field environments show suppressed star formation, particularly in the intermediate-mass range. The integrated visualization reveals that all three LSS indicators show consistent environmental trends, strengthening our conclusions about environmental quenching mechanisms.
+The void probability function and tidal field proxy provide complementary information to the local density metric. Figure~\ref{fig:combined_trends} demonstrates that galaxies with high void probability (P$_{\text{void}}$ > 0.1) consistently show enhanced star formation across all mass bins, while galaxies in high tidal field environments show suppressed star formation, particularly in the intermediate-mass range. The integrated visualization reveals that all five LSS indicators show consistent environmental trends, strengthening our conclusions about environmental quenching mechanisms.
 
 \begin{figure*}
 \includegraphics[width=\textwidth]{sfr_vs_environment.png}
@@ -200,7 +217,7 @@ High-mass galaxies exhibit complex environmental dependence, with enhanced star 
 
 \subsection{Multiple LSS Indicators: Complementary Environmental Information}
 
-The implementation of three complementary LSS indicators provides a more complete picture of galaxy environments:
+The implementation of five complementary LSS indicators provides a more complete picture of galaxy environments:
 
 \begin{enumerate}
 \item \textbf{Local Density}: Captures the immediate neighborhood density, most relevant for ram-pressure stripping and galaxy-galaxy interactions.
@@ -208,9 +225,13 @@ The implementation of three complementary LSS indicators provides a more complet
 \item \textbf{Void Probability}: Identifies galaxies in truly isolated environments, providing a clean sample for studying intrinsic galaxy evolution.
 
 \item \textbf{Tidal Field Proxy}: Measures the large-scale density gradient, relevant for understanding tidal interactions and large-scale flows.
+
+\item \textbf{Halo Mass}: Direct measurement of dark matter halo mass from group catalog, providing fundamental environmental parameter.
+
+\item \textbf{Richness}: Number of group member galaxies, indicating local galaxy density and group evolutionary state.
 \end{enumerate}
 
-The consistency of environmental trends across all three indicators strengthens our conclusions about environmental quenching mechanisms.
+The consistency of environmental trends across all five indicators strengthens our conclusions about environmental quenching mechanisms.
 
 \subsection{Physical Mechanisms}
 
@@ -249,7 +270,7 @@ Using an expanded sample of 434,935 galaxies from DESI DR1 Value Added Catalogs 
 \begin{enumerate}
 \item \textbf{Mass-dependent environmental quenching}: Environmental effects are strongest in intermediate-mass galaxies (10.0-11.0 log M$_\odot$), with systematic decreases in star formation from void to cluster environments.
 
-\item \textbf{Multiple LSS indicators}: Implementation of local density, void probability function, and tidal field proxy provides complementary environmental information and strengthens our conclusions.
+\item \textbf{Multiple LSS indicators}: Implementation of local density, void probability function, tidal field proxy, halo mass, and richness provides complementary environmental information and strengthens our conclusions.
 
 \item \textbf{Unprecedented statistical power}: The 380-fold increase in sample size enables robust stellar-mass binned analysis and detailed environmental characterization.
 

@@ -72,6 +72,24 @@ DATASETS = {
         'url': f"{BASE_URL}/lss/iron/v1.1/LSScats/full/QSO_full.dat.fits",
         'size_gb': 0.2,
         'description': "QSO LSS catalog"
+    },
+    
+    'gfinder_galaxy': {
+        'url': f"{BASE_URL}/gfinder/v1.0/DESIDR9.y1.v1_galaxy.fits",
+        'size_gb': 8.3,
+        'description': "Gfinder galaxy catalog with coordinates and properties"
+    },
+    
+    'gfinder_group': {
+        'url': f"{BASE_URL}/gfinder/v1.0/DESIDR9.y1.v1_group.fits", 
+        'size_gb': 5.6,
+        'description': "Gfinder group catalog with halo mass and richness"
+    },
+    
+    'gfinder_gal2grp': {
+        'url': f"{BASE_URL}/gfinder/v1.0/iDESIDR9.y1.v1_1.fits",
+        'size_gb': 0.1,
+        'description': "Galaxy-group relationship mapping"
     }
 }
 
@@ -180,8 +198,18 @@ def download_expanded_sample():
                             DATASETS[dataset_key]['size_gb']):
                 verify_desi_data(filename)
     
+    gfinder_datasets = ['gfinder_galaxy', 'gfinder_group', 'gfinder_gal2grp']
+    for dataset_key in gfinder_datasets:
+        if dataset_key in DATASETS:
+            filename = f"{dataset_key}.fits"
+            print(f"\nDownloading {DATASETS[dataset_key]['description']}")
+            if download_file(DATASETS[dataset_key]['url'], filename, 
+                            DATASETS[dataset_key]['size_gb']):
+                verify_desi_data(filename)
+    
     print("\n=== Expanded sample download complete ===")
     print("Expected sample increase: ~5-10x current size")
+    print("Gfinder halo mass and richness data included")
 
 def download_full_data():
     """Download the complete DESI DR1 VAC dataset"""

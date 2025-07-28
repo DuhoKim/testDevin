@@ -29,6 +29,7 @@ class DESIAnalyzer:
         self.lss_data = {}
         self.fastspec_data = None
         self.agn_data = None
+        self.gfinder_data = {}
     
     def load_data(self):
         """Load DESI DR1 VAC data"""
@@ -95,6 +96,62 @@ class DESIAnalyzer:
                 agn_names = [col for col in agn_table.colnames if len(agn_table[col].shape) <= 1]
                 self.agn_data = agn_table[agn_names].to_pandas()
                 print(f"  {len(self.agn_data)} AGN loaded")
+    
+    def load_gfinder_data(self):
+        """Load Gfinder halo-based group catalog data"""
+        print("Loading Gfinder halo-based group catalog...")
+        
+        gfinder_files = {
+            'galaxy': 'gfinder_galaxy.fits',
+            'group': 'gfinder_group.fits', 
+            'gal2grp': 'gfinder_gal2grp.fits'
+        }
+        
+        for catalog_name, filename in gfinder_files.items():
+            filepath = os.path.join(self.data_dir, filename)
+            if os.path.exists(filepath):
+                print(f"Loading Gfinder {catalog_name} catalog...")
+                try:
+                    with fits.open(filepath) as hdul:
+                        if catalog_name == 'galaxy':
+                            table = Table(hdul['GALAXY'].data)
+                        elif catalog_name == 'group':
+                            table = Table(hdul['GROUP'].data)
+                        else:
+                            table = Table(hdul['GAL2GRP'].data)
+                        
+                        column_names = [col for col in table.colnames if len(table[col].shape) <= 1]
+                        self.gfinder_data[catalog_name] = table[column_names].to_pandas()
+                        print(f"  {len(self.gfinder_data[catalog_name])} objects loaded")
+                except Exception as e:
+                    print(f"  Error loading {filename}: {e}")
+                    continue
+            else:
+                print(f"  {filename} not found, skipping Gfinder {catalog_name} catalog")
+        
+        if all(key in self.gfinder_data for key in ['galaxy', 'group', 'gal2grp']):
+            try:
+                gal_grp = pd.merge(self.gfinder_data['gal2grp'], 
+                                 self.gfinder_data['group'][['IGRP', 'RICH', 'GRP_LOGM']], 
+                                 on='IGRP', how='left')
+                
+                self.gfinder_matched = pd.merge(self.gfinder_data['galaxy'], 
+                                              gal_grp[['IGAL', 'RICH', 'GRP_LOGM', 'RANK']], 
+                                              on='IGAL', how='left')
+                
+                self.gfinder_matched['RICH'] = self.gfinder_matched['RICH'].fillna(1)
+                self.gfinder_matched['GRP_LOGM'] = self.gfinder_matched['GRP_LOGM'].fillna(11.0)
+                
+                print(f"  Gfinder matched catalog: {len(self.gfinder_matched)} galaxies")
+                print(f"  Halo mass range: {self.gfinder_matched['GRP_LOGM'].min():.2f} to {self.gfinder_matched['GRP_LOGM'].max():.2f}")
+                print(f"  Richness range: {self.gfinder_matched['RICH'].min()} to {self.gfinder_matched['RICH'].max()}")
+                return True
+            except Exception as e:
+                print(f"  Error joining Gfinder catalogs: {e}")
+                return False
+        else:
+            print("  Not all Gfinder catalogs loaded, skipping halo mass/richness analysis")
+            return False
 
     def analyze_stellar_mass_distribution(self):
         """Analyze stellar mass distribution and create optimal bins"""
@@ -213,6 +270,46 @@ class DESIAnalyzer:
             print(f"Environment classification (tidal):")
             print(data_clean['TIDAL_ENVIRONMENT'].value_counts())
             
+            if not hasattr(self, 'gfinder_matched'):
+                self.load_gfinder_data()
+            
+            if hasattr(self, 'gfinder_matched'):
+                print("Adding halo mass and richness indicators...")
+                gfinder_coords = SkyCoord(ra=self.gfinder_matched['RA'].values*u.deg, 
+                                        dec=self.gfinder_matched['DEC'].values*u.deg)
+                lss_coords = SkyCoord(ra=data_clean['RA'].values*u.deg, 
+                                    dec=data_clean['DEC'].values*u.deg)
+                
+                idx, d2d, d3d = lss_coords.match_to_catalog_sky(gfinder_coords)
+                separation_cut = d2d < 1.0*u.arcsec
+                
+                data_clean['HALO_MASS'] = np.nan
+                data_clean['RICHNESS'] = np.nan
+                data_clean.loc[separation_cut, 'HALO_MASS'] = self.gfinder_matched.iloc[idx[separation_cut]]['GRP_LOGM'].values
+                data_clean.loc[separation_cut, 'RICHNESS'] = self.gfinder_matched.iloc[idx[separation_cut]]['RICH'].values
+                
+                valid_halo = np.isfinite(data_clean['HALO_MASS'])
+                valid_rich = np.isfinite(data_clean['RICHNESS'])
+                
+                if valid_halo.sum() > 0:
+                    halo_percentiles = np.percentile(data_clean.loc[valid_halo, 'HALO_MASS'], [25, 75])
+                    data_clean['HALO_ENVIRONMENT'] = 'INTERMEDIATE_HALO'
+                    data_clean.loc[data_clean['HALO_MASS'] < halo_percentiles[0], 'HALO_ENVIRONMENT'] = 'LOW_HALO'
+                    data_clean.loc[data_clean['HALO_MASS'] > halo_percentiles[1], 'HALO_ENVIRONMENT'] = 'HIGH_HALO'
+                    
+                if valid_rich.sum() > 0:
+                    rich_percentiles = np.percentile(data_clean.loc[valid_rich, 'RICHNESS'], [25, 75])
+                    data_clean['RICHNESS_ENVIRONMENT'] = 'INTERMEDIATE_RICH'
+                    data_clean.loc[data_clean['RICHNESS'] < rich_percentiles[0], 'RICHNESS_ENVIRONMENT'] = 'LOW_RICH'
+                    data_clean.loc[data_clean['RICHNESS'] > rich_percentiles[1], 'RICHNESS_ENVIRONMENT'] = 'HIGH_RICH'
+                    
+                print(f"Halo mass environment classification:")
+                if 'HALO_ENVIRONMENT' in data_clean.columns:
+                    print(data_clean['HALO_ENVIRONMENT'].value_counts())
+                print(f"Richness environment classification:")
+                if 'RICHNESS_ENVIRONMENT' in data_clean.columns:
+                    print(data_clean['RICHNESS_ENVIRONMENT'].value_counts())
+            
             return data_clean
         else:
             print("Required columns (RA, DEC, Z_not4clus) not found")
@@ -231,8 +328,16 @@ class DESIAnalyzer:
             return
             
         if 'TARGETID' in self.fastspec_data.columns and 'TARGETID' in env_data.columns:
+            env_cols = ['TARGETID', 'ENVIRONMENT', 'LOG_DENSITY']
+            if 'HALO_ENVIRONMENT' in env_data.columns:
+                env_cols.extend(['HALO_ENVIRONMENT', 'HALO_MASS'])
+            if 'RICHNESS_ENVIRONMENT' in env_data.columns:
+                env_cols.extend(['RICHNESS_ENVIRONMENT', 'RICHNESS'])
+            if 'TIDAL_ENVIRONMENT' in env_data.columns:
+                env_cols.extend(['TIDAL_ENVIRONMENT', 'LOG_TIDAL_FIELD'])
+            
             merged = pd.merge(self.fastspec_data, 
-                            env_data[['TARGETID', 'ENVIRONMENT', 'LOG_DENSITY']], 
+                            env_data[env_cols], 
                             on='TARGETID', how='inner')
             print(f"Matched {len(merged)} objects between FastSpecFit and LSS")
         else:
@@ -309,6 +414,24 @@ class DESIAnalyzer:
                 median_sfr = np.median(env_data['LOG_SFR'])
                 median_ssfr = np.median(env_data['LOG_SSFR'])
                 print(f"  {env}: N={len(env_data)}, median log SFR={median_sfr:.2f}, median log sSFR={median_ssfr:.2f}")
+        
+        if 'HALO_ENVIRONMENT' in merged_clean.columns:
+            print("\nHalo mass environmental trends:")
+            for env in ['LOW_HALO', 'INTERMEDIATE_HALO', 'HIGH_HALO']:
+                env_data = merged_clean[merged_clean['HALO_ENVIRONMENT'] == env]
+                if len(env_data) > 10:
+                    median_sfr = np.median(env_data['LOG_SFR'])
+                    median_ssfr = np.median(env_data['LOG_SSFR'])
+                    print(f"  {env}: N={len(env_data)}, median log SFR={median_sfr:.2f}, median log sSFR={median_ssfr:.2f}")
+        
+        if 'RICHNESS_ENVIRONMENT' in merged_clean.columns:
+            print("\nRichness environmental trends:")
+            for env in ['LOW_RICH', 'INTERMEDIATE_RICH', 'HIGH_RICH']:
+                env_data = merged_clean[merged_clean['RICHNESS_ENVIRONMENT'] == env]
+                if len(env_data) > 10:
+                    median_sfr = np.median(env_data['LOG_SFR'])
+                    median_ssfr = np.median(env_data['LOG_SSFR'])
+                    print(f"  {env}: N={len(env_data)}, median log SFR={median_sfr:.2f}, median log sSFR={median_ssfr:.2f}")
         
         print("SFR vs environment analysis complete")
         print("Generated: sfr_vs_environment.png")
@@ -852,6 +975,7 @@ def main():
     analyzer = DESIAnalyzer()
     
     analyzer.load_data()
+    analyzer.load_gfinder_data()
     
     sfr_results = analyzer.analyze_sfr_vs_environment()
     
