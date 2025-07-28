@@ -260,7 +260,7 @@ class DESIAnalyzer:
         return tidal_proxy
 
     def calculate_environment_metrics(self, catalog_name='BGS'):
-        """Calculate multiple large-scale structure environment metrics"""
+        """Calculate multiple large-scale structure environment metrics and merge with FastSpecFit data"""
         if catalog_name not in self.lss_data:
             print(f"LSS catalog {catalog_name} not available")
             return None
@@ -355,7 +355,23 @@ class DESIAnalyzer:
                 data_clean['HALO_ENVIRONMENT'] = 'INTERMEDIATE_HALO'
                 data_clean['RICHNESS_ENVIRONMENT'] = 'INTERMEDIATE_RICH'
             
-            return data_clean
+            if self.fastspec_data is not None and 'TARGETID' in data_clean.columns and 'TARGETID' in self.fastspec_data.columns:
+                print("Merging environment data with FastSpecFit data...")
+                fastspec_cols = ['TARGETID', 'LOGMSTAR', 'SFR', 'RA', 'DEC', 'Z']
+                available_cols = [col for col in fastspec_cols if col in self.fastspec_data.columns]
+                
+                merged_data = pd.merge(data_clean, self.fastspec_data[available_cols], on='TARGETID', how='inner', suffixes=('', '_fastspec'))
+                print(f"  Merged dataset: {len(merged_data)} objects with both environment and FastSpecFit data")
+                
+                if 'RA_fastspec' in merged_data.columns:
+                    merged_data['RA'] = merged_data['RA_fastspec']
+                    merged_data['DEC'] = merged_data['DEC_fastspec']
+                    merged_data.drop(['RA_fastspec', 'DEC_fastspec'], axis=1, inplace=True)
+                
+                return merged_data
+            else:
+                print("  FastSpecFit data not available for merging")
+                return data_clean
         else:
             print("Required columns (RA, DEC, Z_not4clus) not found")
             return None
@@ -698,7 +714,7 @@ class DESIAnalyzer:
                        (merged_clean['LOGMSTAR'] < max_mass))
             bin_data[bin_name] = merged_clean[mask].copy()
         
-        fig, axes = plt.subplots(2, 3, figsize=(20, 12))
+        fig, axes = plt.subplots(3, 3, figsize=(24, 18))
         
         ax1 = axes[0, 0]
         environments = ['VOID', 'INTERMEDIATE', 'CLUSTER']
@@ -862,40 +878,84 @@ class DESIAnalyzer:
         ax5.legend()
         ax5.grid(True, alpha=0.3)
         
-        ax6 = axes[1, 2]
+        if 'HALO_ENVIRONMENT' in merged_clean.columns and merged_clean['HALO_ENVIRONMENT'].notna().sum() > 100:
+            halo_envs = ['LOW_HALO', 'INTERMEDIATE_HALO', 'HIGH_HALO']
+            halo_colors = ['lightblue', 'lightgreen', 'lightcoral']
+            
+            for j, (bin_name, data) in enumerate(bin_data.items()):
+                ax_halo = axes[2, j]
+                halo_data = [data[data['HALO_ENVIRONMENT'] == env]['SFR'] for env in halo_envs]
+                halo_data = [np.log10(data.dropna()) for data in halo_data if len(data.dropna()) > 10]
+                
+                if len(halo_data) > 0:
+                    bp = ax_halo.boxplot(halo_data, labels=[env.replace('_HALO', '') for env in halo_envs[:len(halo_data)]], 
+                                        patch_artist=True)
+                    for patch, color in zip(bp['boxes'], halo_colors[:len(halo_data)]):
+                        patch.set_facecolor(color)
+                        patch.set_alpha(0.7)
+                    ax_halo.set_ylabel('log SFR [M☉/yr]')
+                    ax_halo.set_title(f'SFR vs Halo Mass Environment\n{bin_name}')
+                    ax_halo.grid(True, alpha=0.3)
+                else:
+                    ax_halo.text(0.5, 0.5, 'Insufficient\nHalo Mass Data', 
+                               ha='center', va='center', transform=ax_halo.transAxes)
+                    ax_halo.set_title(f'SFR vs Halo Mass Environment\n{bin_name}')
+        else:
+            ax6 = axes[1, 2]
+            
+            sample_sizes = []
+            env_labels = []
+            
+            for env in environments:
+                for bin_name in mass_bins.keys():
+                    data = bin_data[bin_name]
+                    env_data = data[data['ENVIRONMENT'] == env]
+                    sample_sizes.append(len(env_data))
+                    env_labels.append(f"{env}\n{bin_name.split()[0]}")
+            
+            bars = ax6.bar(range(len(sample_sizes)), sample_sizes, 
+                          color=[colors[i//3] for i in range(len(sample_sizes))],
+                          alpha=0.7)
+            
+            ax6.set_xlabel('Environment - Mass Bin')
+            ax6.set_ylabel('Number of Galaxies')
+            ax6.set_title('Sample Sizes by Environment and Mass')
+            ax6.set_xticks(range(len(env_labels)))
+            ax6.set_xticklabels([label.replace('\n', ' ') for label in env_labels], 
+                               rotation=45, ha='right')
+            ax6.grid(True, alpha=0.3)
+            
+            for i, (bar, size) in enumerate(zip(bars, sample_sizes)):
+                if size > 0:
+                    ax6.text(bar.get_x() + bar.get_width()/2, bar.get_height() + max(sample_sizes)*0.01,
+                            f'{size:,}', ha='center', va='bottom', fontsize=8)
+            
+            for j in range(3):
+                axes[2, j].axis('off')
         
-        sample_sizes = []
-        env_labels = []
-        
-        for env in environments:
-            for bin_name in mass_bins.keys():
-                data = bin_data[bin_name]
-                env_data = data[data['ENVIRONMENT'] == env]
-                sample_sizes.append(len(env_data))
-                env_labels.append(f"{env}\n{bin_name.split()[0]}")
-        
-        bars = ax6.bar(range(len(sample_sizes)), sample_sizes, 
-                      color=[colors[i//3] for i in range(len(sample_sizes))],
-                      alpha=0.7)
-        
-        ax6.set_xlabel('Environment - Mass Bin')
-        ax6.set_ylabel('Number of Galaxies')
-        ax6.set_title('Sample Sizes by Environment and Mass')
-        ax6.set_xticks(range(len(env_labels)))
-        ax6.set_xticklabels([label.replace('\n', ' ') for label in env_labels], 
-                           rotation=45, ha='right')
-        ax6.grid(True, alpha=0.3)
-        
-        for i, (bar, size) in enumerate(zip(bars, sample_sizes)):
-            if size > 0:
-                ax6.text(bar.get_x() + bar.get_width()/2, bar.get_height() + max(sample_sizes)*0.01,
-                        f'{size:,}', ha='center', va='bottom', fontsize=8)
+        if 'RICHNESS_ENVIRONMENT' in merged_clean.columns and merged_clean['RICHNESS_ENVIRONMENT'].notna().sum() > 100:
+            print("\nRichness environmental trends:")
+            for env in ['LOW_RICH', 'INTERMEDIATE_RICH', 'HIGH_RICH']:
+                env_data = merged_clean[merged_clean['RICHNESS_ENVIRONMENT'] == env]
+                if len(env_data) > 10:
+                    median_sfr = env_data['SFR'].median()
+                    ssfr = env_data['SFR'] / (10**env_data['LOGMSTAR'])
+                    median_ssfr = np.log10(ssfr + 1e-12).median()
+                    print(f"  {env}: N={len(env_data)}, median log SFR={median_sfr:.2f}, median log sSFR={median_ssfr:.2f}")
         
         plt.tight_layout()
         plt.savefig('combined_environmental_trends.png', dpi=300, bbox_inches='tight')
         plt.show()
         
         print("Generated: combined_environmental_trends.png")
+        print("Integrated visualization now includes all 5 LSS indicators:")
+        print("  1. Local Density (void/intermediate/cluster)")
+        print("  2. Specific SFR vs Environment")
+        print("  3. Environmental Quenching by Mass")
+        print("  4. Tidal Field Effects")
+        print("  5. Void Probability Effects")
+        if 'HALO_ENVIRONMENT' in merged_clean.columns:
+            print("  6. Halo Mass Environment Effects")
         
         self.create_trend_summary_plot(bin_data, mass_bins)
     
